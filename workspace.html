@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Portal | Workspace</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        /* Workspace-specific styles */
+        body.workspace-mode {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .workspace-header {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .workspace-header:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
+        .flow-icon {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .flow-icon span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            background: var(--primary);
+            position: relative;
+        }
+
+        .flow-icon span:nth-child(2) {
+            width: 12px;
+            margin-left: 6px;
+        }
+
+        .flow-icon span::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: -2px;
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        .workspace-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: var(--text-main);
+            text-transform: uppercase;
+        }
+
+        /* Main workspace container */
+        .workspace-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100%;
+            padding: 40px;
+            gap: 30px;
+        }
+
+        /* Prompt console card */
+        .prompt-console {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            padding: 3px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .console-content {
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            border-radius: 18px;
+            padding: 30px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .console-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .console-icon {
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        .console-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .prompt-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .prompt-input-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: 0.5px;
+        }
+
+        .prompt-textarea {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: white;
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            resize: vertical;
+            min-height: 100px;
+            transition: all 0.3s ease;
+            line-height: 1.6;
+        }
+
+        .prompt-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+        }
+
+        .prompt-action {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .prompt-btn {
+            flex: 1;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .prompt-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 242, 255, 0.3);
+        }
+
+        .prompt-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Workspace section */
+        .workspace-section {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Pathway tabs */
+        .pathway-tabs-bar {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .pathway-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .pathway-badge:hover {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .pathway-badge.active {
+            border-color: var(--primary);
+            background: rgba(0, 242, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3), inset 0 0 20px rgba(0, 242, 255, 0.1);
+        }
+
+        .pathway-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .pathway-badge.active .pathway-status-dot {
+            background: #00ff00;
+            box-shadow: 0 0 8px #00ff00;
+        }
+
+        .pathway-badge.loading .pathway-status-dot {
+            background: var(--primary);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Canvas container */
+        .canvas-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 500px;
+            background: #ffffff;
+            border-radius: 16px;
+            border: 2px solid var(--border-color);
+            padding: 20px;
+            overflow: auto;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .canvas-container .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        .canvas-empty {
+            color: #999999;
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            text-align: center;
+        }
+
+        /* Ambient effects */
+        .ambient-glow {
+            position: fixed;
+            bottom: -10%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(112, 0, 255, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .workspace-container {
+                padding: 20px;
+                gap: 20px;
+            }
+
+            .prompt-console {
+                max-width: 100%;
+            }
+
+            .canvas-container {
+                max-width: 100%;
+                height: 400px;
+            }
+
+            .pathway-tabs-bar {
+                gap: 8px;
+            }
+
+            .pathway-badge {
+                padding: 10px 16px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body class="workspace-mode">
+    <!-- Three.js Background Canvas -->
+    <canvas id="canvas-bg"></canvas>
+
+    <!-- Workspace Header -->
+    <header class="workspace-header">
+        <div class="flow-icon">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <span class="workspace-title">NEXUS WORKSPACE</span>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="workspace-container">
+        <!-- Prompt Console -->
+        <div class="prompt-console">
+            <div class="console-content">
+                <div class="console-header">
+                    <div class="console-icon"></div>
+                    <span class="console-label">Flowchart Objective Console</span>
+                </div>
+
+                <div class="prompt-input-group">
+                    <label class="prompt-input-label">Enter Your Flowchart Concept</label>
+                    <textarea id="flowchart-prompt" class="prompt-textarea" placeholder="Describe the flowchart you want to generate. Be specific about the process, decision points, and desired outcomes..."></textarea>
+                </div>
+
+                <div class="prompt-action">
+                    <button id="generate-pathways-btn" class="prompt-btn">Generate Pathways</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workspace Section -->
+        <div class="workspace-section">
+            <!-- Pathway Tabs Bar -->
+            <div class="pathway-tabs-bar">
+                <div class="pathway-badge" data-pathway="0">
+                    <span class="pathway-status-dot"></span>
+                    <span>Pathway A</span>
+                </div>
+                <div class="pathway-badge" data-pathway="1">
+                    <span class="pathway-status-dot"></span>
+                    <span>Pathway B</span>
+                </div>
+                <div class="pathway-badge" data-pathway="2">
+                    <span class="pathway-status-dot"></span>
+                    <span>Pathway C</span>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div id="flowchart-canvas" class="canvas-container">
+                <div class="canvas-empty">Ready to render flowcharts...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Ambient Glow Effect -->
+    <div class="ambient-glow"></div>
+
+    <!-- Scripts -->
+    <script src="workspace.js"></script>
+</body>
+</html>

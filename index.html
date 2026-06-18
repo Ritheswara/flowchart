@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic UI | Flowchart</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <canvas id="canvas-bg"></canvas>
+
+    <header class="top-nav">
+        <div id="flowchart-context" class="context-label">
+            <div class="flow-icon">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span class="context-text">FLOWCHART</span>
+        </div>
+    </header>
+
+    <main class="login-container">
+        <div class="login-card" id="login-card">
+            <div class="card-content">
+                <div class="card-header">
+                    <h2>Nexus Portal</h2>
+                    <p>Enter the dimension to continue</p>
+                </div>
+                <form class="login-form">
+                    <div class="input-group">
+                        <label for="username">Identity Tag</label>
+                        <input type="text" id="username" placeholder="User-404" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Security Key</label>
+                        <input type="password" id="password" placeholder="••••••••" required>
+                    </div>
+                    <div class="options">
+                        <label class="remember">
+                            <input type="checkbox"> <span>Stay Synced</span>
+                        </label>
+                        <a href="#" class="forgot">Lost Sync?</a>
+                    </div>
+                    <button type="submit" class="login-btn">
+                        <span>INITIATE LINK</span>
+                        <div class="btn-glow"></div>
+                    </button>
+                </form>
+                <div class="card-footer">
+                    <p>New Entity? <a href="#">Create Node</a></p>
+                </div>
+            </div>
+            <div class="card-border"></div>
+        </div>
+    </main>
+
+    <div id="pathways-container" class="pathways-hidden">
+        <div class="pathways-content">
+            <div class="pathways-header">
+                <h2>Flowchart Pathways</h2>
+                <button id="close-pathways" class="close-btn">×</button>
+            </div>
+
+            <div class="pathways-input-section">
+                <div class="input-group">
+                    <label for="user-prompt">Enter Your Query</label>
+                    <textarea id="user-prompt" placeholder="Describe your flowchart concept..." rows="3"></textarea>
+                </div>
+                <button id="generate-btn" class="generate-btn">GENERATE PATHWAYS</button>
+            </div>
+
+            <div class="pathways-tabs">
+                <div class="pathway-tab" data-pathway="0">
+                    <span class="tab-label">Pathway A</span>
+                    <span class="tab-status">Idle</span>
+                </div>
+                <div class="pathway-tab" data-pathway="1">
+                    <span class="tab-label">Pathway B</span>
+                    <span class="tab-status">Idle</span>
+                </div>
+                <div class="pathway-tab" data-pathway="2">
+                    <span class="tab-label">Pathway C</span>
+                    <span class="tab-status">Idle</span>
+                </div>
+            </div>
+
+            <div id="flowchart-canvas" class="flowchart-canvas"></div>
+        </div>
+    </div>
+
+    <div class="ambient-glow"></div>
+
+    <script src="main.js"></script>
+</body>
+</html>
