@@ -150,23 +150,33 @@ window.addEventListener('DOMContentLoaded', () => {
     }, '-=0.3');
 });
 
-// Form Interaction
+// Form Interaction — Redirect to Dashboard
 const loginBtn = document.querySelector('.login-btn');
 loginBtn.addEventListener('click', (e) => {
     e.preventDefault();
+
+    // Button press animation
     gsap.to(loginBtn, { scale: 0.95, duration: 0.1, yoyo: true, repeat: 1 });
-    
-    // Simulate link initiation
+
+    // Show syncing state
     const btnText = loginBtn.querySelector('span');
-    const originalText = btnText.innerText;
     btnText.innerText = 'SYNCING...';
-    
+    loginBtn.disabled = true;
+
+    // After a brief delay, fade out the page and navigate to the dashboard
     setTimeout(() => {
-        btnText.innerText = originalText;
-        // Show pathways container
-        const pathwaysContainer = document.getElementById('pathways-container');
-        pathwaysContainer.classList.remove('pathways-hidden');
-    }, 1500);
+        btnText.innerText = 'LINKED ✓';
+
+        // Smooth fade-out transition
+        gsap.to('body', {
+            opacity: 0,
+            duration: 0.6,
+            ease: 'power2.inOut',
+            onComplete: () => {
+                window.location.href = 'dashboard.html';
+            }
+        });
+    }, 1200);
 });
 
 // --- Flowchart Pathways Logic ---
