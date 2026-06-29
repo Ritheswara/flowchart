@@ -92,226 +92,469 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// === FLOWCHART PATHWAYS LOGIC ===
+// === FLOWCHART GENERATION LOGIC ===
 
-// Initialize Mermaid
-mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+// --- Mermaid Initialization ---
+// Ensure Mermaid is loaded (it's already in the HTML via CDN, but guard against edge cases)
+(function ensureMermaid() {
+    const config = {
+        startOnLoad: false,
+        theme: 'base',
+        securityLevel: 'loose',
+        themeVariables: {
+            primaryColor: '#ffffff',
+            primaryTextColor: '#111827',
+            primaryBorderColor: '#d1d5db',
+            lineColor: '#6b7280',
+            textColor: '#111827',
+            mainBkg: '#ffffff'
+        }
+    };
 
-let generatedGraphCodes = [];
-let currentRenderIndex = 0;
+    if (typeof mermaid !== 'undefined') {
+        mermaid.initialize(config);
+        console.log('Mermaid initialized with startOnLoad: false');
+    } else {
+        // Dynamically inject the Mermaid CDN script if it wasn't found
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+        script.onload = () => {
+            mermaid.initialize(config);
+            console.log('Mermaid loaded dynamically and initialized');
+        };
+        document.head.appendChild(script);
+    }
+})();
+
+// --- State ---
+let generatedSolutions = []; // Array of { graphCode: string, label: string } | null
+let activeSolutionIndex = -1;
+
+// --- DOM References ---
+const CANVAS_ID = 'flowchart-canvas';
+const TABS_BAR_ID = 'solution-tabs-bar';
+const API_URL = 'http://127.0.0.1:8000/api/generate-flowchart';
+
+// --- History Management Helpers ---
 
 /**
- * Renders a Mermaid flowchart inside a designated container using mermaid.render()
- * @param {string} elementId - The ID of the container element
- * @param {string} graphCode - The Mermaid graph code string
+ * Loads flowchart prompt history from localStorage.
+ * Key: 'flowchartHistory'
+ * @returns {string[]} Array of saved prompt strings
  */
-async function renderMermaidChart(elementId, graphCode) {
-    const container = document.getElementById(elementId);
-    
+function loadHistory() {
+    try {
+        const stored = localStorage.getItem('flowchartHistory');
+        if (!stored) return [];
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+            return parsed.filter(item => typeof item === 'string');
+        }
+        return [];
+    } catch (e) {
+        console.error('Error loading history from localStorage:', e);
+        return [];
+    }
+}
+
+/**
+ * Saves flowchart prompt history array to localStorage.
+ * Key: 'flowchartHistory'
+ * @param {string[]} history - Array of prompt strings
+ */
+function saveHistory(history) {
+    try {
+        localStorage.setItem('flowchartHistory', JSON.stringify(history));
+    } catch (e) {
+        console.error('Error saving history to localStorage:', e);
+    }
+}
+
+/**
+ * Renders the prompt history items in the sidebar.
+ */
+function renderHistory() {
+    const historyList = document.querySelector('.history-list');
+    if (!historyList) return;
+
+    historyList.innerHTML = '';
+    const history = loadHistory();
+
+    history.forEach(promptText => {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'history-item';
+
+        const arrow = document.createElement('span');
+        arrow.className = 'history-arrow';
+        arrow.textContent = '↳';
+
+        const text = document.createElement('span');
+        text.className = 'history-text';
+        text.textContent = promptText;
+
+        item.appendChild(arrow);
+        item.appendChild(text);
+
+        historyList.appendChild(item);
+    });
+}
+
+/**
+ * Adds a new prompt to history, moving it to the top if duplicate.
+ * @param {string} prompt - The user prompt to save
+ */
+function addPromptToHistory(prompt) {
+    const trimmedPrompt = prompt.trim();
+    if (!trimmedPrompt) return;
+
+    let history = loadHistory();
+    // Remove duplicate entry if it exists to move it to the top
+    history = history.filter(item => item !== trimmedPrompt);
+    // Add to the front
+    history.unshift(trimmedPrompt);
+
+    saveHistory(history);
+    renderHistory();
+}
+
+/**
+ * Renders a Mermaid flowchart SVG inside the canvas container.
+ * Clears the container first, then uses mermaid.render() to produce the SVG.
+ * On error, displays a user-friendly message on the canvas.
+ *
+ * @param {string} graphCode - Valid Mermaid graph syntax
+ */
+async function renderCanvas(graphCode) {
+    const container = document.getElementById(CANVAS_ID);
     if (!container) {
-        console.error(`Container with ID "${elementId}" not found.`);
+        console.error(`Canvas container "#${CANVAS_ID}" not found.`);
         return;
     }
 
-    // Clear the container
+    // 1. Inside renderCanvas(graphCode), completely clear out the canvas element innerHTML before processing.
     container.innerHTML = '';
 
-    try {
-        // Generate a unique ID for this render
-        const diagramId = `mermaid-diagram-${Date.now()}`;
+    // 3. Add a fallback configuration to clear any stuck internal parser states by assigning
+    // an empty function or simple console warning to window.mermaid.parseError if the global mermaid object exists.
+    if (typeof mermaid !== 'undefined') {
+        if (typeof window !== 'undefined') {
+            window.mermaid.parseError = (err, hash) => {
+                console.warn('Mermaid parser error:', err);
+            };
+        } else {
+            mermaid.parseError = (err, hash) => {
+                console.warn('Mermaid parser error:', err);
+            };
+        }
+    }
 
-        // Use mermaid.render() to parse and generate SVG
+    try {
+        // 2. Generate a unique ID string for each render pass (e.g., combining a prefix with Math.random())
+        // so that Mermaid evaluates each layout as a completely fresh instance.
+        const diagramId = `mermaid-render-${Math.random().toString(36).substring(2, 9)}`;
+
+        // 4. Wrap the await mermaid.render() call in a strong try/catch block.
         const { svg } = await mermaid.render(diagramId, graphCode);
 
-        // Create a wrapper div for the SVG
-        const svgWrapper = document.createElement('div');
-        svgWrapper.style.display = 'flex';
-        svgWrapper.style.justifyContent = 'center';
-        svgWrapper.style.alignItems = 'center';
-        svgWrapper.style.width = '100%';
-        svgWrapper.style.height = '100%';
-        svgWrapper.innerHTML = svg;
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;justify-content:center;align-items:center;width:100%;height:100%;';
+        wrapper.innerHTML = svg;
+        container.appendChild(wrapper);
 
-        // Inject the SVG directly into the container
-        container.appendChild(svgWrapper);
-
-        console.log(`Flowchart rendered successfully in container: ${elementId}`);
+        console.log('Flowchart rendered successfully.');
     } catch (error) {
         console.error('Mermaid rendering error:', error);
+        // If an error is caught, cleanly display an inline error message inside the canvas container
+        // to the user instead of letting the exception bubble up and freeze future generation requests.
+        showCanvasError(
+            container,
+            'Unable to render this flowchart.',
+            'The generated diagram may contain syntax errors. Please try generating again.'
+        );
+    }
+}
 
-        // Display a themed error message on the canvas
-        const errorContainer = document.createElement('div');
-        errorContainer.style.display = 'flex';
-        errorContainer.style.flexDirection = 'column';
-        errorContainer.style.justifyContent = 'center';
-        errorContainer.style.alignItems = 'center';
-        errorContainer.style.width = '100%';
-        errorContainer.style.height = '100%';
-        errorContainer.style.color = '#e74c3c';
-        errorContainer.style.fontSize = '1rem';
-        errorContainer.style.fontFamily = "'Outfit', sans-serif";
-        errorContainer.style.fontWeight = '600';
-        errorContainer.style.textAlign = 'center';
-        errorContainer.style.gap = '12px';
+// Keep renderFlowchart alias for backwards compatibility
+const renderFlowchart = renderCanvas;
 
-        const errorIcon = document.createElement('div');
-        errorIcon.textContent = '⚠';
-        errorIcon.style.fontSize = '2.5rem';
-        errorIcon.style.opacity = '0.7';
+/**
+ * Shows a styled error message inside the canvas container.
+ *
+ * @param {HTMLElement} container - The canvas container element
+ * @param {string} title - The primary error message
+ * @param {string} subtitle - A helpful secondary message
+ */
+function showCanvasError(container, title, subtitle) {
+    container.innerHTML = '';
 
-        const errorMessage = document.createElement('div');
-        errorMessage.textContent = 'Path alignment failed.';
-        errorMessage.style.marginBottom = '6px';
+    const errorEl = document.createElement('div');
+    errorEl.style.cssText = `
+        display:flex;flex-direction:column;justify-content:center;align-items:center;
+        width:100%;height:100%;color:#e74c3c;font-family:'Outfit',sans-serif;
+        text-align:center;gap:12px;padding:2rem;
+    `;
 
-        const errorSubtext = document.createElement('div');
-        errorSubtext.textContent = 'Please re-generate.';
-        errorSubtext.style.fontSize = '0.85rem';
-        errorSubtext.style.opacity = '0.8';
+    errorEl.innerHTML = `
+        <div style="font-size:2.5rem;opacity:0.7">⚠</div>
+        <div style="font-size:1rem;font-weight:600">${title}</div>
+        <div style="font-size:0.85rem;opacity:0.8">${subtitle}</div>
+    `;
 
-        errorContainer.appendChild(errorIcon);
-        errorContainer.appendChild(errorMessage);
-        errorContainer.appendChild(errorSubtext);
+    container.appendChild(errorEl);
+}
 
-        container.appendChild(errorContainer);
+/**
+ * Creates a dynamic tab badge in the tab bar.
+ * Initially shows a loading state with a spinner icon.
+ *
+ * @param {number} solutionNumber - 1-indexed solution number
+ * @returns {HTMLElement} The created badge element
+ */
+function createSolutionTab(solutionNumber) {
+    const tabsBar = document.getElementById(TABS_BAR_ID);
+    if (!tabsBar) return null;
+
+    const badge = document.createElement('div');
+    badge.className = 'pathway-badge loading';
+    badge.dataset.solution = String(solutionNumber - 1); // 0-indexed for array lookup
+
+    const statusDot = document.createElement('span');
+    statusDot.className = 'pathway-status-dot';
+
+    const label = document.createElement('span');
+    label.textContent = `⏳ Solution ${solutionNumber} Processing...`;
+
+    badge.appendChild(statusDot);
+    badge.appendChild(label);
+    tabsBar.appendChild(badge);
+
+    return badge;
+}
+
+/**
+ * Updates a tab badge to its completed "ready" state.
+ *
+ * @param {HTMLElement} badge - The badge DOM element
+ * @param {number} solutionNumber - 1-indexed solution number
+ */
+function markTabReady(badge, solutionNumber) {
+    if (!badge) return;
+    badge.className = 'pathway-badge active';
+    const label = badge.querySelector('span:last-child');
+    if (label) {
+        label.textContent = `Solution ${solutionNumber}`;
     }
 }
 
 /**
- * Updates the UI status of a specific pathway badge
- * @param {number} pathwayIndex - The index of the pathway (0, 1, 2)
- * @param {string} statusClass - CSS class ('loading', 'active', or '')
+ * Updates a tab badge to show an error state.
+ *
+ * @param {HTMLElement} badge - The badge DOM element
+ * @param {number} solutionNumber - 1-indexed solution number
  */
-function updatePathwayBadge(pathwayIndex, statusClass = '') {
-    const badges = document.querySelectorAll('.pathway-badge');
-    if (badges[pathwayIndex]) {
-        badges[pathwayIndex].className = `pathway-badge ${statusClass}`;
+function markTabError(badge, solutionNumber) {
+    if (!badge) return;
+    badge.className = 'pathway-badge';
+    const label = badge.querySelector('span:last-child');
+    if (label) {
+        label.textContent = `Solution ${solutionNumber} — Failed`;
     }
 }
 
 /**
- * Main async function to generate flowchart pathways
- * @param {string} userPrompt - The user's input prompt for the flowchart
+ * Highlights the active tab and de-highlights the rest.
+ *
+ * @param {number} index - 0-indexed solution index to highlight
  */
-async function generateFlowchartPathways(userPrompt) {
-    const generateBtn = document.getElementById('generate-pathways-btn');
-    const badges = document.querySelectorAll('.pathway-badge');
-
-    // Reset state
-    generatedGraphCodes = [];
-    currentRenderIndex = 0;
-
-    // Disable button and reset badges
-    generateBtn.disabled = true;
-    badges.forEach((badge) => {
-        badge.className = 'pathway-badge';
+function setActiveTab(index) {
+    const badges = document.querySelectorAll(`#${TABS_BAR_ID} .pathway-badge`);
+    badges.forEach((b, i) => {
+        b.classList.toggle('active', i === index);
     });
+    activeSolutionIndex = index;
+}
 
-    const pathwayNames = ['A', 'B', 'C'];
-    const API_URL = 'http://127.0.0.1:8000/api/generate-pathway';
+/**
+ * Main function: sequentially generates 3 flowchart solutions from the backend.
+ * For each iteration it:
+ *   1. Creates a loading tab badge
+ *   2. POSTs to the API with the correct payload
+ *   3. On success, stores the graph code, updates the tab, and renders the first result immediately
+ *
+ * @param {string} userPrompt - The user's flowchart description
+ */
+async function generateFlowcharts(userPrompt) {
+    const generateBtn = document.getElementById('generate-pathways-btn');
+    const tabsBar = document.getElementById(TABS_BAR_ID);
 
-    // Loop exactly 3 times
+    // --- Reset state ---
+    generatedSolutions = [];
+    activeSolutionIndex = -1;
+    if (tabsBar) tabsBar.innerHTML = '';
+
+    // Reset canvas to default
+    const canvasEl = document.getElementById(CANVAS_ID);
+    if (canvasEl) {
+        canvasEl.innerHTML = '<div class="canvas-empty">Generating flowcharts...</div>';
+    }
+
+    // Disable button while generating
+    generateBtn.disabled = true;
+    const originalBtnText = generateBtn.textContent;
+    generateBtn.textContent = 'Generating...';
+
+    const previousSolutions = [];
+
+    // Sequential loop — exactly 3 iterations
     for (let i = 0; i < 3; i++) {
+        const solutionNumber = i + 1;
+
+        // 1. Create a loading tab badge
+        const badge = createSolutionTab(solutionNumber);
+
         try {
-            // Update UI to show loading state for this pathway
-            updatePathwayBadge(i, 'loading');
-
-            // Prepare request body
-            const requestBody = {
-                prompt: userPrompt,
-                pathway_number: i,
-                previous_pathways: generatedGraphCodes
-            };
-
-            // Make sequential API call
+            // 2. POST to backend API
             const response = await fetch(API_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_prompt: userPrompt,
+                    solution_number: solutionNumber,
+                    previous_solutions: [...previousSolutions]
+                })
             });
 
             if (!response.ok) {
-                throw new Error(`API Error: ${response.statusText}`);
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
 
-            // Store the graph code
-            if (data.graph_code) {
-                generatedGraphCodes.push(data.graph_code);
-
-                // Update badge to active/ready
-                updatePathwayBadge(i, 'active');
-
-                // Render the first available flowchart immediately
-                if (currentRenderIndex === 0) {
-                    renderMermaidChart('flowchart-canvas', data.graph_code);
-                    currentRenderIndex++;
-                }
-            } else {
-                throw new Error('No graph_code in response');
+            if (!data.graph_code) {
+                throw new Error('Response missing "graph_code" field');
             }
+
+            // 3. Store the solution
+            const graphCode = data.graph_code;
+            generatedSolutions.push({ graphCode, label: `Solution ${solutionNumber}` });
+            previousSolutions.push(graphCode);
+
+            // 4. Update tab to ready state
+            markTabReady(badge, solutionNumber);
+
+            // 5. Render the FIRST successful solution immediately
+            if (generatedSolutions.filter(s => s !== null).length === 1) {
+                setActiveTab(i);
+                await renderCanvas(graphCode);
+            }
+
         } catch (error) {
-            console.error(`Error generating pathway ${pathwayNames[i]}:`, error);
-            updatePathwayBadge(i, '');
+            console.error(`Error generating Solution ${solutionNumber}:`, error);
+            markTabError(badge, solutionNumber);
+
+            // Push null so indices stay aligned with tab positions
+            generatedSolutions.push(null);
         }
     }
 
-    // Re-enable button when all pathways are done
+    // Re-enable button
     generateBtn.disabled = false;
+    generateBtn.textContent = originalBtnText;
+
+    // Save prompt to history if at least one flowchart solution generated successfully
+    const hasSuccessfulSolution = generatedSolutions.some(s => s !== null);
+    if (hasSuccessfulSolution) {
+        addPromptToHistory(userPrompt);
+    }
 }
 
+// === EVENT LISTENERS ===
+
 /**
- * Setup event listeners for dashboard UI
+ * Sets up all dashboard UI event listeners.
  */
 function setupDashboardUI() {
     const generateBtn = document.getElementById('generate-pathways-btn');
     const promptInput = document.getElementById('flowchart-prompt');
-    const badges = document.querySelectorAll('.pathway-badge');
     const clearBtn = document.querySelector('.prompt-btn.secondary');
+    const tabsBar = document.getElementById(TABS_BAR_ID);
 
-    // Generate button click
+    // Load and render existing history
+    renderHistory();
+
+    // --- History list click event delegation ---
+    const historyList = document.querySelector('.history-list');
+    if (historyList) {
+        historyList.addEventListener('click', (e) => {
+            e.preventDefault();
+            const item = e.target.closest('.history-item');
+            if (!item) return;
+            const textSpan = item.querySelector('.history-text');
+            if (textSpan && promptInput) {
+                promptInput.value = textSpan.textContent;
+            }
+        });
+    }
+
+    // --- Generate button ---
     generateBtn.addEventListener('click', () => {
         const prompt = promptInput.value.trim();
         if (prompt) {
-            generateFlowchartPathways(prompt);
+            generateFlowcharts(prompt);
         } else {
-            alert('Please enter a flowchart concept first.');
+            alert('Please describe the flowchart you want to generate.');
         }
     });
 
-    // Clear button click
-    clearBtn.addEventListener('click', () => {
-        promptInput.value = '';
-        promptInput.focus();
-    });
-
-    // Badge click to render flowchart
-    badges.forEach((badge, index) => {
-        badge.addEventListener('click', () => {
-            if (generatedGraphCodes[index]) {
-                renderMermaidChart('flowchart-canvas', generatedGraphCodes[index]);
-            }
+    // --- Clear button ---
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            promptInput.value = '';
+            promptInput.focus();
         });
-    });
+    }
 
-    // Allow Shift+Enter to submit prompt
+    // --- Tab click (event delegation for dynamic tabs) ---
+    if (tabsBar) {
+        tabsBar.addEventListener('click', (e) => {
+            const badge = e.target.closest('.pathway-badge');
+            if (!badge) return;
+
+            const index = parseInt(badge.dataset.solution, 10);
+            if (isNaN(index)) return;
+
+            const solution = generatedSolutions[index];
+            if (!solution || !solution.graphCode) {
+                console.warn(`Solution ${index + 1} is not available.`);
+                return;
+            }
+
+            // Highlight this tab and render its flowchart
+            setActiveTab(index);
+            renderCanvas(solution.graphCode);
+        });
+    }
+
+    // --- Shift+Enter to submit ---
     promptInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
             generateBtn.click();
         }
     });
 
-    // Logout link
+    // --- Logout confirmation ---
     const logoutLink = document.querySelector('.logout-link');
-    logoutLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (confirm('Are you sure you want to disconnect?')) {
-            window.location.href = 'index.html';
-        }
-    });
+    if (logoutLink) {
+        logoutLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('Are you sure you want to log out?')) {
+                window.location.href = 'index.html';
+            }
+        });
+    }
 }
 
-// Initialize dashboard on DOM load
+// Initialize on DOM ready
 window.addEventListener('DOMContentLoaded', setupDashboardUI);

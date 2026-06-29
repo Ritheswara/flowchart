@@ -1119,16 +1119,16 @@ body.dashboard-mode {
 
 .canvas-container-dashboard {
     flex: 1;
-    background: #ffffff;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: 16px;
+    background: var(--card-bg);
+    backdrop-filter: blur(25px);
+    border-radius: 14px;
+    padding: 20px;
     overflow: auto;
-    box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 300px;
+    width: 100%;
+    height: 100%;
 }
 
 .canvas-container-dashboard .mermaid {
@@ -1286,8 +1286,10 @@ body.dashboard-mode {
         font-size: 0.75rem;
     }
 
+    .canvas-card-3d {
+        min-height: 300px;
+    }
     .canvas-container-dashboard {
-        min-height: 250px;
         border-radius: 8px;
         padding: 12px;
     }
@@ -1329,13 +1331,79 @@ body.dashboard-mode {
         padding: 12px;
     }
 
+    .canvas-card-3d {
+        min-height: 250px;
+    }
+
     .canvas-container-dashboard {
-        min-height: 200px;
         padding: 8px;
     }
 
     .tabs-label,
     .canvas-label {
         font-size: 0.7rem;
+    }
+}
+
+/* ===== NEW DYNAMIC 3D LAYOUT & SHADERS ===== */
+.workspace-panel-left {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.workspace-panel-right {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex: 1;
+}
+
+.canvas-card-3d {
+    position: relative;
+    padding: 3px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 400px;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.5s ease;
+}
+
+.canvas-card-3d:hover {
+    transform: translateY(-4px) rotateX(1.5deg) rotateY(-1.5deg);
+    box-shadow: 0 25px 50px rgba(0, 242, 255, 0.15), 0 0 30px rgba(0, 242, 255, 0.1);
+}
+
+/* Two Column Desktop Layout */
+@media (min-width: 1025px) {
+    .workspace-content {
+        flex-direction: row !important;
+        align-items: stretch !important;
+        height: calc(100vh - 100px) !important;
+        overflow: hidden !important;
+        gap: 30px !important;
+    }
+
+    .workspace-panel-left {
+        width: 380px !important;
+        flex-shrink: 0 !important;
+        height: 100% !important;
+        overflow-y: auto !important;
+        padding-right: 5px;
+    }
+
+    .workspace-panel-right {
+        flex: 1 !important;
+        height: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .canvas-section {
+        height: 100% !important;
     }
 }

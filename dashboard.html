@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Portal | Dashboard</title>
+    <title>Flowchart Generator | Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,26 +41,6 @@
                         <span class="history-title">Recent Flowcharts</span>
                     </div>
                     <div class="history-list">
-                        <a href="#" class="history-item">
-                            <span class="history-arrow">↳</span>
-                            <span class="history-text">User Registration Flow</span>
-                        </a>
-                        <a href="#" class="history-item">
-                            <span class="history-arrow">↳</span>
-                            <span class="history-text">Payment Processing</span>
-                        </a>
-                        <a href="#" class="history-item">
-                            <span class="history-arrow">↳</span>
-                            <span class="history-text">CI/CD Pipeline</span>
-                        </a>
-                        <a href="#" class="history-item">
-                            <span class="history-arrow">↳</span>
-                            <span class="history-text">API Integration</span>
-                        </a>
-                        <a href="#" class="history-item">
-                            <span class="history-arrow">↳</span>
-                            <span class="history-text">Database Migration</span>
-                        </a>
                     </div>
                 </div>
 
@@ -97,54 +77,51 @@
 
             <!-- Workspace Content -->
             <div class="workspace-content">
-                <!-- Prompt Console Card -->
-                <div class="prompt-console-dashboard">
-                    <div class="console-content">
-                        <div class="console-header">
-                            <div class="console-icon"></div>
-                            <span class="console-label">Flowchart Generator</span>
-                        </div>
+                <!-- Left Panel (Console & Tabs) -->
+                <div class="workspace-panel-left">
+                    <!-- Prompt Console Card -->
+                    <div class="prompt-console-dashboard">
+                        <div class="console-content">
+                            <div class="console-header">
+                                <div class="console-icon"></div>
+                                <span class="console-label">Flowchart Generator</span>
+                            </div>
 
-                        <div class="prompt-input-group">
-                            <label class="prompt-input-label">Describe Your Flowchart</label>
-                            <textarea id="flowchart-prompt" class="prompt-textarea" placeholder="Describe the flowchart you want to generate. Be specific about the process, decision points, and desired outcomes..."></textarea>
-                        </div>
+                            <div class="prompt-input-group">
+                                <label class="prompt-input-label">Describe Your Flowchart</label>
+                                <textarea id="flowchart-prompt" class="prompt-textarea" placeholder="Describe the flowchart you want to generate. Be specific about the process, decision points, and desired outcomes..."></textarea>
+                            </div>
 
-                        <div class="prompt-action">
-                            <button id="generate-pathways-btn" class="prompt-btn">Generate Flowchart</button>
-                            <button class="prompt-btn secondary">Clear</button>
+                            <div class="prompt-action">
+                                <button id="generate-pathways-btn" class="prompt-btn">Generate Flowchart</button>
+                                <button class="prompt-btn secondary">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pathway Tabs -->
+                    <div class="pathway-tabs-section">
+                        <div class="tabs-header">
+                            <span class="tabs-label">Results</span>
+                        </div>
+                        <div class="pathway-tabs-bar" id="solution-tabs-bar">
+                            <!-- Tabs are dynamically created by dashboard.js -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Pathway Tabs -->
-                <div class="pathway-tabs-section">
-                    <div class="tabs-header">
-                        <span class="tabs-label">Results</span>
-                    </div>
-                    <div class="pathway-tabs-bar">
-                        <div class="pathway-badge" data-pathway="0">
-                            <span class="pathway-status-dot"></span>
-                            <span>Pathway A</span>
+                <!-- Right Panel (Canvas) -->
+                <div class="workspace-panel-right">
+                    <!-- Canvas Container -->
+                    <div class="canvas-section">
+                        <div class="canvas-header">
+                            <span class="canvas-label">Flowchart Canvas</span>
                         </div>
-                        <div class="pathway-badge" data-pathway="1">
-                            <span class="pathway-status-dot"></span>
-                            <span>Pathway B</span>
+                        <div class="canvas-card-3d">
+                            <div id="flowchart-canvas" class="canvas-container-dashboard">
+                                <div class="canvas-empty">Ready to render flowcharts...</div>
+                            </div>
                         </div>
-                        <div class="pathway-badge" data-pathway="2">
-                            <span class="pathway-status-dot"></span>
-                            <span>Pathway C</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Canvas Container -->
-                <div class="canvas-section">
-                    <div class="canvas-header">
-                        <span class="canvas-label">Flowchart Canvas</span>
-                    </div>
-                    <div id="flowchart-canvas" class="canvas-container-dashboard">
-                        <div class="canvas-empty">Ready to render flowcharts...</div>
                     </div>
                 </div>
             </div>
